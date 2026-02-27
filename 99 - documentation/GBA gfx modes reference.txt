@@ -1,0 +1,67 @@
+Mode 0:
+
+1        All 4 available backgrounds
+
+2        No rotation or scaling
+
+3        16 or 256 colors
+
+4        Maximum 1024 tiles
+
+ 
+
+Mode 1:
+
+1        Only background 0, 1 and 2 are available
+
+2        Background 2 supports rotation/scaling
+
+3        256 colors
+
+4        Maximum 256 tiles
+
+ 
+
+Mode 2:
+
+1        Only background 2 and 3 are available
+
+2        Both backgrounds support rotation/scaling
+
+3        256 colors
+
+4        Maximum 256 tiles
+
+ 
+
+Mode 3:
+
+1        Only background 2 is available
+
+2        240x160 pixels
+
+3        32768 colors
+
+ 
+
+Mode 4:
+
+1        Only background 2 is available
+
+2        240x160 pixels
+
+3        Supports double buffering
+
+4        256 different color entries from a palette made up from 32768 colors
+
+ 
+
+Mode 5:
+
+1        Only background 2 is available
+
+2        160x128 pixels
+
+3        Supports double buffering
+
+4        32768 colors

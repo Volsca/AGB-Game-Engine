@@ -1,0 +1,327 @@
+/* Script for ld -r: link without relocation */
+/* Default linker script, for normal executables */
+/* DevKit Advance Linker Script R5                  */
+/* This is based on lnkscript v1.3 from             */
+/* Jeff Frohwein's crtls package available from     */
+/* www.devrs.com.                                   */
+/* R5 - removed all script code that was commented  */
+/*      out to make thing easier to read.           */
+/*    - DWARF 1 debugging symbols have been removed */
+/*      because they have been deprecated as of     */
+/*      gcc 3.3                                     */
+/* Linker Script v1.3 by Jeff Frohwein              */
+/*  v1.0 - Original release                         */
+/*  v1.1 - Added proper .data section support       */
+/*  v1.2 - Added support for c++ & iwram overlays   */
+/*       - Major contributions by Jason Wilkins.    */
+/*  v1.3 - .ewram section now can be used when      */
+/*         compiling for MULTIBOOT mode. This fixes */
+/*         malloc() in DevKitAdvance which depends  */
+/*         on __eheap_start instead of end to define*/
+/*         the starting location of heap space.     */
+/*         External global variable __gba_iwram_heap*/
+/*         support added to allow labels end, _end, */
+/*         & __end__ to point to end of iwram or    */
+/*         the end of ewram.                        */
+/* This file is released into the public domain   */
+/* for commercial or non-commercial use with no   */
+/* restrictions placed upon it.                   */
+/* NOTE!!!: This linker script defines the RAM &  */
+/*   ROM start addresses. In order for it to work */
+/*   properly, remove -Ttext and -Tbss linker     */
+/*   options from your makefile if they are       */
+/*   present.                                     */
+/* You can use the following to view section      */
+/* addresses in your .elf file:                   */
+/*   objdump -h file.elf                          */
+/* Please note that empty sections may incorrectly*/
+/* list the lma address as the vma address for    */
+/* some versions of objdump.                      */
+OUTPUT_FORMAT("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
+OUTPUT_ARCH(arm)
+ENTRY(_start)
+/* By default this linker script will generate code        */
+/* for flash carts located at 0x8000000. In order to       */
+/* generate code that is compiled at 0x2000000 that        */
+/* will run on flash carts or in multiboot mode then       */
+/* you need to add the following variable to your main     */
+/* project file. It's value is NOT important but           */
+/* IT MUST BE A GLOBAL VARIABLE OR IT WILL NOT WORK:       */
+/*   #define MULTIBOOT int __gba_multiboot;                */
+/* Then use it like this: MULTIBOOT                        */
+/* By default this linker script will set the labels       */
+/* end, _end, & __end__ at the end of ewram. To force      */
+/* them to be set to the end of iwram then you need to     */
+/* add the following variable to your main                 */
+/* project file. It's value is NOT important but           */
+/* IT MUST BE A GLOBAL VARIABLE OR IT WILL NOT WORK:       */
+/*   #define IWRAMHEAP int __gba_iwram_heap;               */
+/* Then use it like this: IWRAMHEAP                        */
+/* The linker script function "var1 += var2;" sometimes    */
+/* reports incorrect values in the *.map file but the      */
+/* actual value it calculates is usually, if not always,   */
+/* correct. If you leave out the ". = ALIGN(4);" at the    */
+/* end of each section then the return value of SIZEOF()   */
+/* is sometimes incorrect and "var1 += var2;" appears to   */
+/* not work as well. "var1 += var2" style functions are    */
+/* avoided below as a result.                              */
+/* The linker script MEMORY directive is not used here due    */
+/* to the fact that __load_start_text is not always a fixed value. */
+__memmap_ewram_start	= 0x2000000;
+__memmap_ewram_end	= 0x2040000;
+__memmap_iwram_start	= 0x3000000;
+__memmap_iwram_end	= 0x3008000;
+__memmap_rom_start	= 0x8000000;
+__memmap_rom_end	= 0x9FE0000;
+SECTIONS
+{
+/*** CART ROM ***/
+  . = DEFINED(__gba_multiboot) ? __memmap_ewram_start : __memmap_rom_start ;
+  __text_start = . ;
+  .text :
+  {
+    /* crt0 has to be the first thing in the ROM */
+    *crt0.o(.text)
+    *(.text .stub .text.* .gnu.linkonce.t*)
+    /* .gnu.warning sections are handled specially by elf32.em.  */
+    *(.gnu.warning)
+    *(.glue_7)
+    *(.glue_7t)
+    . = ALIGN(4);
+  } =0
+  .init :
+  {
+    KEEP (*(.init))
+    . = ALIGN(4);
+  } =0
+  .fini :
+  {
+    KEEP (*(.fini))
+    . = ALIGN(4);
+  } =0
+  __text_end = . ;
+  __rodata_start = . ;
+  .rodata :
+  {
+    *(.rodata .rodata.* .gnu.linkonce.r*)
+    *(.rodata1)
+    SORT(CONSTRUCTORS)
+    . = ALIGN(4);
+  } =0
+  __rodata_end = . ;
+  .eh_frame :
+  {
+    KEEP (*(.eh_frame))
+    . = ALIGN(4);
+  } =0
+  .gcc_except_table :
+  {
+    *(.gcc_except_table)
+    . = ALIGN(4);
+  } =0
+  .ctors :
+  {
+    /* gcc uses crtbegin.o to find the start of
+       the constructors, so we make sure it is
+       first.  Because this is a wildcard, it
+       doesn't matter if the user does not
+       actually link against crtbegin.o; the
+       linker won't look for a file to match a
+       wildcard.  The wildcard also means that it
+       doesn't matter which directory crtbegin.o
+       is in.  */
+    KEEP (*crtbegin.o(.ctors))
+    /* We don't want to include the .ctor section from
+       from the crtend.o file until after the sorted ctors.
+       The .ctor section from the crtend file contains the
+       end of ctors marker and it must be last */
+    KEEP (*(EXCLUDE_FILE (*crtend.o ) .ctors))
+    KEEP (*(SORT(.ctors.*)))
+    KEEP (*(.ctors))
+    . = ALIGN(4);
+  } =0
+  .dtors :
+  {
+    KEEP (*crtbegin.o(.dtors))
+    KEEP (*(EXCLUDE_FILE (*crtend.o ) .dtors))
+    KEEP (*(SORT(.dtors.*)))
+    KEEP (*(.dtors))
+    . = ALIGN(4);
+  } =0
+  .jcr :
+  {
+    *(.jcr)
+    . = ALIGN(4);
+  } =0
+/*** IWRAM ***/
+  . = __memmap_iwram_start;
+  __load_start_data =
+	ADDR(.text) +
+	SIZEOF(.text) +
+	SIZEOF(.init) +
+	SIZEOF(.fini) +
+	SIZEOF(.rodata) +
+	SIZEOF(.eh_frame) +
+	SIZEOF(.gcc_except_table) +
+	SIZEOF(.ctors) +
+	SIZEOF(.dtors) +
+	SIZEOF(.jcr);
+  __data_start = . ;
+  .data : AT(__load_start_data)
+  {
+    *(.sdata2 .sdata2.* .gnu.linkonce.s2.*)
+    *(.data .data.* .gnu.linkonce.d.*)
+    *(.data1)
+    *(.tdata .tdata.* .gnu.linkonce.td.*)
+    *(.sdata .sdata.* .gnu.linkonce.s.*)
+    . = ALIGN(4);
+  } =0
+  __data_end = . ;
+  __load_stop_data = __load_start_data + SIZEOF(.data);
+  __load_start_iwram = __load_stop_data;
+  __iwram_start = . ;
+  .iwram : AT(__load_start_iwram)
+  {
+    *.iwram.o (.text .data)
+    *(.iwram .iwram.*)
+    . = ALIGN(4);
+  } =0
+  __iwram_end = . ;
+  __load_stop_iwram = __load_start_iwram + SIZEOF(.iwram);
+  __load_start_iwram_overlay = __load_stop_iwram;
+  __iwram_overlay_start = . ;
+  OVERLAY : NOCROSSREFS AT (__load_start_iwram_overlay)
+  {
+     .iwram0 { *(.iwram0 .iwram0.*) . = ALIGN(4); }
+     .iwram1 { *(.iwram1 .iwram1.*) . = ALIGN(4); }
+     .iwram2 { *(.iwram2 .iwram2.*) . = ALIGN(4); }
+     .iwram3 { *(.iwram3 .iwram3.*) . = ALIGN(4); }
+     .iwram4 { *(.iwram4 .iwram4.*) . = ALIGN(4); }
+     .iwram5 { *(.iwram5 .iwram5.*) . = ALIGN(4); }
+     .iwram6 { *(.iwram6 .iwram6.*) . = ALIGN(4); }
+     .iwram7 { *(.iwram7 .iwram7.*) . = ALIGN(4); }
+     .iwram8 { *(.iwram8 .iwram8.*) . = ALIGN(4); }
+     .iwram9 { *(.iwram9 .iwram9.*) . = ALIGN(4); }
+  } =0
+  __iwram_overlay_end = . ;
+  __load_stop_iwram_overlay =
+	__load_start_iwram_overlay +
+	SIZEOF(.iwram0) +
+	SIZEOF(.iwram1) +
+	SIZEOF(.iwram2) +
+	SIZEOF(.iwram3) +
+	SIZEOF(.iwram4) +
+	SIZEOF(.iwram5) +
+	SIZEOF(.iwram6) +
+	SIZEOF(.iwram7) +
+	SIZEOF(.iwram8) +
+	SIZEOF(.iwram9);
+  /* .bss section is not loaded, so it has no load address */
+  __bss_start = . ;
+  __bss_start__ = . ;
+  .bss :
+  {
+    *(.sbss2 .sbss2.* .gnu.linkonce.sb2.*)
+    *(.tbss .tbss.* .gnu.linkonce.tb.*)
+    *(.tcommon)
+    *(.sbss .sbss.* .gnu.linkonce.sb.*)
+    *(.scommon)
+    *(.bss .bss.* .gnu.linkonce.b*)
+    *(COMMON)
+    . = ALIGN(4);
+  }
+  _bss_end__ = . ;
+  __bss_end = . ;
+  __bss_end__ = . ;
+  __iwram_break = . ;
+/*** EWRAM ***/
+  __load_start_ewram = __load_stop_iwram_overlay;
+  . = DEFINED(__gba_multiboot) ? __load_start_ewram : __memmap_ewram_start ;
+  __ewram_start = . ;
+  .ewram : AT(__load_start_ewram)
+  {
+    *.ewram.o (.text .data)
+    *(.ewram .ewram.*)
+    . = ALIGN(4);
+  } =0
+  __ewram_end = . ;
+  __load_stop_ewram = __load_start_ewram + SIZEOF(.ewram);
+  __load_start_ewram_overlay = __load_stop_ewram;
+  __ewram_overlay_start = . ;
+  OVERLAY : NOCROSSREFS AT(__load_start_ewram_overlay)
+  {
+     .ewram0 { *(.ewram0 .ewram0.*) . = ALIGN(4); }
+     .ewram1 { *(.ewram1 .ewram1.*) . = ALIGN(4); }
+     .ewram2 { *(.ewram2 .ewram2.*) . = ALIGN(4); }
+     .ewram3 { *(.ewram3 .ewram3.*) . = ALIGN(4); }
+     .ewram4 { *(.ewram4 .ewram4.*) . = ALIGN(4); }
+     .ewram5 { *(.ewram5 .ewram5.*) . = ALIGN(4); }
+     .ewram6 { *(.ewram6 .ewram6.*) . = ALIGN(4); }
+     .ewram7 { *(.ewram7 .ewram7.*) . = ALIGN(4); }
+     .ewram8 { *(.ewram8 .ewram8.*) . = ALIGN(4); }
+     .ewram9 { *(.ewram9 .ewram9.*) . = ALIGN(4); }
+  } =0
+  __ewram_overlay_end = . ;
+  __load_stop_ewram_overlay =
+	__load_start_ewram_overlay +
+	SIZEOF(.ewram0) +
+	SIZEOF(.ewram1) +
+	SIZEOF(.ewram2) +
+	SIZEOF(.ewram3) +
+	SIZEOF(.ewram4) +
+	SIZEOF(.ewram5) +
+	SIZEOF(.ewram6) +
+	SIZEOF(.ewram7) +
+	SIZEOF(.ewram8) +
+	SIZEOF(.ewram9);
+  __ewram_break = __ewram_overlay_end ;
+/*** misc ***/
+  _end = DEFINED(__gba_iwram_heap) ? __iwram_break : __ewram_break ;
+  __end__ = _end ;
+  PROVIDE(end = _end);
+  __heap_limit = DEFINED(__gba_iwram_heap) ? __memmap_iwram_end : __memmap_ewram_end ;
+  __rom_break = DEFINED(__gba_multiboot) ? __load_stop_ewram_overlay + 0x6000000 :
+__load_stop_ewram_overlay ;
+  /* The following could be used to copy from ROM
+     to ewram an image created for multiboot. */
+  __mb_image_start = __memmap_ewram_start;
+  __mb_image_end = __rom_break - (__memmap_rom_start - __memmap_ewram_start);
+  /DISCARD/ :
+  {
+     *(.devkitadv.define)
+  }
+/*** debugging info ***/
+  /* Stabs debugging sections.  */
+  .stab 0 : { *(.stab) }
+  .stabstr 0 : { *(.stabstr) }
+  .stab.excl 0 : { *(.stab.excl) }
+  .stab.exclstr 0 : { *(.stab.exclstr) }
+  .stab.index 0 : { *(.stab.index) }
+  .stab.indexstr 0 : { *(.stab.indexstr) }
+  /* DWARF debug sections.
+   Symbols in the DWARF debugging sections are relative to the beginning
+   of the section so we begin them at 0.  */
+  /* DWARF 1 */
+  .debug          0 : { *(.debug) }
+  .line           0 : { *(.line) }
+  /* GNU DWARF 1 extensions */
+  .debug_srcinfo  0 : { *(.debug_srcinfo) }
+  .debug_sfnames  0 : { *(.debug_sfnames) }
+  /* DWARF 1.1 and DWARF 2 */
+  .debug_aranges  0 : { *(.debug_aranges) }
+  .debug_pubnames 0 : { *(.debug_pubnames) }
+  /* DWARF 2 */
+  .debug_info     0 : { *(.debug_info) }
+  .debug_abbrev   0 : { *(.debug_abbrev) }
+  .debug_line     0 : { *(.debug_line) }
+  .debug_frame    0 : { *(.debug_frame) }
+  .debug_str      0 : { *(.debug_str) }
+  .debug_loc      0 : { *(.debug_loc) }
+  .debug_macinfo  0 : { *(.debug_macinfo) }
+  .comment 0 : { *(.comment) }
+  /* SGI/MIPS DWARF 2 extensions */
+  .debug_weaknames 0 : { *(.debug_weaknames) }
+  .debug_funcnames 0 : { *(.debug_funcnames) }
+  .debug_typenames 0 : { *(.debug_typenames) }
+  .debug_varnames  0 : { *(.debug_varnames) }
+}
