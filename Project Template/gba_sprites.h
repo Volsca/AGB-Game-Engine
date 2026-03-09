@@ -16,6 +16,22 @@ typedef struct tagOAMEntry
 	u16 attribute3;
 }OAMEntry, *pOAMEntry;
 
+// OAM : Object Attribute Memory
+/*
+* OAM_Mem :
+* Sprites, coordinates, size. 128 sprites, 8 bytes per.
+* (0x7000000 - 0x70003FF)
+* 
+* OBJ_PeletteMem : 
+* Sprite palette memory (512 bytes - 0x50003FF)
+*
+* OAM_Data : 
+* Sprite pixel data | Is 0x6014000 in mode 3 4 & 5
+*/
+#define OAM_Mem        ((u16*)0x7000000)
+#define OBJ_PaletteMem ((u16*)0x5000200)
+#define OAM_Data       ((u16*)0x6010000)
+
 // attribute0
 /* Attribute 0 looks like this
 // 15 | 14 | 13 | 12 | 11 | 10 | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0

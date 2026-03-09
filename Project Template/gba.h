@@ -5,7 +5,7 @@
 #define GBA_H
 
 #include "gba_types.h"
-#include "gba_regs.h"
+// #include "gba_regs.h" // Currently unused, as regs are defined in relevant headers
 #include "gba_keys.h"
 #include "gba_video.h"
 #include "gba_sprites.h"
